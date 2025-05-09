@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows XP Simulation</title>
+    <style>
+        /* XP Theme Styles */
+        body {
+            font-family: "Tahoma", "Geneva", sans-serif;
+            font-size: 11px;
+            background-color: #3A6EA5; /* XP Desktop Blue */
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            user-select: none; /* Prevent text selection during drag */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #desktop {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background-image: url('https://placehold.co/1920x1080/3A6EA5/FFFFFF?text=XP+Desktop'); /* Placeholder for XP wallpaper */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .desktop-icon {
+            width: 70px;
+            height: 80px;
+            text-align: center;
+            color: white;
+            padding: 5px;
+            margin: 15px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            float: left; /* For basic layout */
+        }
+        .desktop-icon:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px dotted rgba(255, 255, 255, 0.5);
+        }
+        .desktop-icon .icon-image {
+            width: 40px;
+            height: 40px;
+            background-color: #ccc; /* Placeholder for actual icon */
+            border: 1px solid #fff;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px; /* For emoji/text icons */
+        }
+        /* Specific Icon Styles (simple text/emoji for now) */
+        #paint-icon .icon-image::before { content: "🎨"; }
+        #video-icon .icon-image::before { content: "▶️"; }
+        #calculator-icon .icon-image::before { content: "🧮"; }
+
+
+        /* Window Styles */
+        .app-window {
+            position: fixed; /* Changed from absolute to fixed for viewport relativity */
+            background-color: #ECE9D8; /* XP window background */
+            border: 1px solid #000;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            min-width: 200px;
+            min-height: 150px;
+        }
+
+        .window-title-bar {
+            background: linear-gradient(to bottom, #0A246A, #1656D0); /* XP Title bar blue */
+            color: white;
+            padding: 4px 8px;
+            font-weight: bold;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 22px; /* Typical XP title bar height */
+        }
+        .window-title-bar:active {
+            cursor: grabbing;
+        }
+        .window-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .window-controls button {
+            background-color: #D4D0C8; /* XP button background */
+            border: 1px outset #FFFFFF;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+            color: black;
+            font-family: "Marlett", "Tahoma", sans-serif; /* Marlett for symbols, fallback */
+            font-size: 10px; /* Marlett symbols are small */
+            width: 18px;
+            height: 16px;
+            padding: 0;
+            margin-left: 2px;
+            line-height: 14px; /* Adjust for Marlett symbols */
+        }
+        .window-controls button:active {
+            border-style: inset;
+        }
+        .window-controls .minimize-btn::before { content: "0"; /* Marlett: minimize */ }
+        .window-controls .maximize-btn::before { content: "1"; /* Marlett: maximize */ }
+        .window-controls .restore-btn::before { content: "2"; /* Marlett: restore */ display: none; }
+        .window-controls .close-btn::before { content: "r"; /* Marlett: close */ }
+
+
+        .window-content {
+            padding: 5px;
+            flex-grow: 1;
+            overflow: auto; /* Changed to auto for content scroll */
+            background-color: white; /* Default content background */
+            display: flex; /* For app layout */
+            flex-direction: column; /* For app layout */
+        }
+        
+        .window-resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            cursor: nwse-resize;
+            /* background: red; */ /* For debugging */
+        }
+
+
+        /* Taskbar Styles */
+        #taskbar {
+            background: linear-gradient(to bottom, #245EDC, #3F8CF1); /* XP Taskbar blue */
+            height: 30px;
+            border-top: 1px solid #619DED;
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+            position: relative; /* Ensure it stays at the bottom */
+            z-index: 10000; /* Above all windows */
+        }
+
+        #start-button {
+            background: linear-gradient(to bottom, #5DAD2B, #73C83D); /* XP Start button green */
+            color: white;
+            border: 1px outset #FFFFFF;
+            border-right-color: #31591A;
+            border-bottom-color: #31591A;
+            padding: 0 10px;
+            font-weight: bold;
+            font-size: 14px;
+            height: 24px;
+            margin-right: 10px;
+            cursor: default; /* Non-functional for this demo */
+            display: flex;
+            align-items: center;
+        }
+        #start-button img { /* For potential XP logo */
+            height: 18px;
+            margin-right: 5px;
+        }
+
+        .taskbar-item {
+            background-color: #3976D3;
+            color: white;
+            border: 1px outset #FFFFFF;
+            border-right-color: #1C3B69;
+            border-bottom-color: #1C3B69;
+            padding: 2px 8px;
+            margin: 0 2px;
+            cursor: pointer;
+            height: 22px;
+            line-height: 18px;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .taskbar-item.active {
+            background-color: #5B95E4;
+            border-style: inset;
+        }
+        .taskbar-item.minimized {
+            background-color: #2A5AA8; /* Darker shade for minimized */
+        }
+
+
+        /* Paint App Styles */
+        #paint-app-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .paint-toolbar {
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap; /* Allow wrapping for smaller windows */
+        }
+        .paint-toolbar label, .paint-toolbar input, .paint-toolbar button {
+            margin-right: 5px;
+        }
+        #paintCanvas {
+            border: 1px solid #000;
+            cursor: crosshair;
+            flex-grow: 1;
+            background-color: #fff;
+            touch-action: none; /* Prevent scrolling on touch devices while drawing */
+        }
+
+        /* Video Player Styles */
+        #video-player-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+        }
+        #video-player-content input[type="text"] {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid #7F9DB9; /* XP input border */
+        }
+        #video-player-content button {
+            padding: 5px 10px;
+            background-color: #D4D0C8;
+            border: 1px outset #FFFFFF;
+        }
+        #video-player-content button:active { border-style: inset; }
+        #youtube-iframe-container {
+            flex-grow: 1;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #youtube-iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .video-error-message {
+            color: red;
+            font-size: 0.9em;
+        }
+
+        /* Calculator Styles */
+        #calculator-content {
+            padding: 10px;
+            background-color: #D4D0C8; /* XP Calculator background */
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            height: 100%; /* Ensure it fills the window content area */
+        }
+        #calculator-display {
+            background-color: #FFFFFF; /* White background for display */
+            border: 1px inset #7F9DB9; /* XP inset border */
+            padding: 5px;
+            text-align: right;
+            font-family: 'Lucida Console', 'Courier New', monospace;
+            font-size: 18px;
+            height: 30px; /* Fixed height for display */
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            flex-grow: 1; /* Allow buttons to take remaining space */
+        }
+        .calculator-buttons button {
+            padding: 10px 5px; /* Adjust padding for better fit */
+            font-size: 14px;
+            background-color: #ECE9D8; /* XP button face */
+            border: 1px outset #FFFFFF;
+            border-right-color: #404040;
+            border-bottom-color: #404040;
+        }
+        .calculator-buttons button:active {
+            border-style: inset;
+            background-color: #c0c0c0;
+        }
+        .calculator-buttons .operator {
+            background-color: #E0E0D0; /* Slightly different for operators */
+        }
+        .calculator-buttons .equals {
+            background-color: #C0DCC0; /* Different for equals */
+        }
+        .calculator-buttons .clear {
+            background-color: #DCC0C0; /* Different for clear */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="desktop">
+        <div id="paint-icon" class="desktop-icon" data-app-id="paintApp" data-app-title="Untitled - Paint">
+            <div class="icon-image"></div>
+            Paint
+        </div>
+        <div id="video-icon" class="desktop-icon" data-app-id="videoPlayerApp" data-app-title="Video Player">
+            <div class="icon-image"></div>
+            Video Player
+        </div>
+        <div id="calculator-icon" class="desktop-icon" data-app-id="calculatorApp" data-app-title="Calculator">
+            <div class="icon-image"></div>
+            Calculator
+        </div>
+
+        <div id="appWindowTemplate" class="app-window" style="display: none;">
+            <div class="window-title-bar">
+                <span class="window-title">App Title</span>
+                <div class="window-controls">
+                    <button class="minimize-btn" title="Minimize"></button>
+                    <button class="maximize-btn" title="Maximize"></button>
+                    <button class="restore-btn" title="Restore"></button>
+                    <button class="close-btn" title="Close"></button>
+                </div>
+            </div>
+            <div class="window-content">
+                </div>
+            <div class="window-resize-handle"></div>
+        </div>
+    </div>
+
+    <div id="taskbar">
+        <button id="start-button">
+            <b>start</b>
+        </button>
+        <div id="taskbar-items-container" style="display: flex; flex-grow: 1;">
+            </div>
+        </div>
+
+    <script>
+        // --- Global State & Config ---
+        const openWindows = {}; // Stores references to open window elements and their state
+        let highestZIndex = 100;
+        const DESKTOP_PADDING = 5; // Padding from browser edges for maximized windows
+        const TASKBAR_HEIGHT = 30; // Height of the taskbar
+
+        // --- DOM Elements ---
+        const desktop = document.getElementById('desktop');
+        const taskbarItemsContainer = document.getElementById('taskbar-items-container');
+        const appWindowTemplate = document.getElementById('appWindowTemplate');
+
+        // --- Window Management ---
+        let activeWindow = null; // The currently active window element for dragging/resizing
+        let dragOffsetX, dragOffsetY;
+        let resizeInitialX, resizeInitialY, resizeInitialWidth, resizeInitialHeight;
+        let isDragging = false;
+        let isResizing = false;
+        let currentAppIdForResizeDrag = null;
+
+
+        function createWindow(appId, title, contentHTML, defaultWidth = 400, defaultHeight = 300, options = {}) {
+            if (openWindows[appId] && openWindows[appId].element.style.display !== 'none') {
+                focusWindow(openWindows[appId].element);
+                return openWindows[appId].element;
+            }
+
+            const windowEl = appWindowTemplate.cloneNode(true);
+            windowEl.id = `window-${appId}`;
+            windowEl.style.display = 'flex'; // Use flex for window structure
+            windowEl.querySelector('.window-title').textContent = title;
+            const contentArea = windowEl.querySelector('.window-content');
+            contentArea.innerHTML = contentHTML; // Set app-specific content
+
+            // Set initial size and position
+            windowEl.style.width = `${defaultWidth}px`;
+            windowEl.style.height = `${defaultHeight}px`;
+            // Center new windows, or cascade them
+            const numOpen = Object.keys(openWindows).filter(id => openWindows[id] && openWindows[id].element.style.display !== 'none').length;
+            windowEl.style.left = `${Math.max(DESKTOP_PADDING, 50 + numOpen * 20)}px`;
+            windowEl.style.top = `${Math.max(DESKTOP_PADDING, 50 + numOpen * 20)}px`;
+            
+            desktop.appendChild(windowEl);
+            focusWindow(windowEl);
+
+            // Store window state
+            openWindows[appId] = {
+                element: windowEl,
+                title: title,
+                isMinimized: false,
+                isMaximized: false,
+                originalRect: null, // For restoring from maximized
+                taskbarItem: null
+            };
+
+            // Add event listeners for window controls
+            const titleBar = windowEl.querySelector('.window-title-bar');
+            titleBar.addEventListener('mousedown', (e) => startDrag(e, windowEl, appId));
+
+            const minimizeBtn = windowEl.querySelector('.minimize-btn');
+            minimizeBtn.addEventListener('click', () => minimizeWindow(appId));
+            
+            const maximizeBtn = windowEl.querySelector('.maximize-btn');
+            const restoreBtn = windowEl.querySelector('.restore-btn');
+            
+            maximizeBtn.addEventListener('click', () => {
+                toggleMaximizeWindow(appId, maximizeBtn, restoreBtn);
+            });
+            restoreBtn.addEventListener('click', () => {
+                 toggleMaximizeWindow(appId, maximizeBtn, restoreBtn); // Same function to toggle
+            });
+
+            const closeBtn = windowEl.querySelector('.close-btn');
+            closeBtn.addEventListener('click', () => closeWindow(appId));
+
+            const resizeHandle = windowEl.querySelector('.window-resize-handle');
+            resizeHandle.addEventListener('mousedown', (e) => startResize(e, windowEl, appId));
+
+            // Focus window on click anywhere on it
+            windowEl.addEventListener('mousedown', () => focusWindow(windowEl), true); // Use capture phase
+
+            createTaskbarItem(appId, title);
+            if (options.onOpen) options.onOpen(windowEl); // Callback after window is created
+            
+            return windowEl;
+        }
+        
+        function toggleMaximizeWindow(appId, maximizeBtn, restoreBtn) {
+            const winData = openWindows[appId];
+            if (!winData) return;
+            const windowEl = winData.element;
+
+            if (winData.isMaximized) { // Restore
+                if (winData.originalRect) {
+                    windowEl.style.left = winData.originalRect.left;
+                    windowEl.style.top = winData.originalRect.top;
+                    windowEl.style.width = winData.originalRect.width;
+                    windowEl.style.height = winData.originalRect.height;
+                }
+                winData.isMaximized = false;
+                maximizeBtn.style.display = 'inline-block';
+                restoreBtn.style.display = 'none';
+                // Make resizable again
+                windowEl.querySelector('.window-resize-handle').style.display = 'block';
+                // Re-enable dragging on title bar
+                windowEl.querySelector('.window-title-bar').style.cursor = 'grab';
+
+            } else { // Maximize
+                winData.originalRect = {
+                    left: windowEl.style.left,
+                    top: windowEl.style.top,
+                    width: windowEl.style.width,
+                    height: windowEl.style.height,
+                };
+                windowEl.style.left = `${DESKTOP_PADDING}px`;
+                windowEl.style.top = `${DESKTOP_PADDING}px`;
+                windowEl.style.width = `calc(100% - ${2 * DESKTOP_PADDING}px)`;
+                windowEl.style.height = `calc(100% - ${TASKBAR_HEIGHT + 2 * DESKTOP_PADDING}px)`;
+                winData.isMaximized = true;
+                maximizeBtn.style.display = 'none';
+                restoreBtn.style.display = 'inline-block';
+                // Disable resizing when maximized
+                windowEl.querySelector('.window-resize-handle').style.display = 'none';
+                // Disable dragging on title bar when maximized (optional, but common)
+                windowEl.querySelector('.window-title-bar').style.cursor = 'default';
+            }
+            focusWindow(windowEl); // Bring to front
+            // Trigger resize for canvas if it's the paint app
+            if (appId === 'paintApp' && typeof resizePaintCanvas === 'function') {
+                setTimeout(resizePaintCanvas, 0); 
+            }
+        }
+
+
+        function focusWindow(windowEl) {
+            if (!windowEl) return;
+            highestZIndex++;
+            windowEl.style.zIndex = highestZIndex;
+
+            // Update taskbar active state
+            Object.values(openWindows).forEach(winData => {
+                if (winData && winData.taskbarItem) {
+                    winData.taskbarItem.classList.remove('active');
+                }
+            });
+            const appId = windowEl.id.replace('window-', '');
+            if (openWindows[appId] && openWindows[appId].taskbarItem && !openWindows[appId].isMinimized) {
+                openWindows[appId].taskbarItem.classList.add('active');
+            }
+        }
+
+        function startDrag(e, windowEl, appId) {
+            if (e.target.closest('.window-controls button')) return; // Don't drag if clicking a button
+            if (openWindows[appId] && openWindows[appId].isMaximized) return; // Don't drag if maximized
+
+            isDragging = true;
+            activeWindow = windowEl;
+            currentAppIdForResizeDrag = appId; // Keep track of the app being dragged
+            dragOffsetX = e.clientX - activeWindow.offsetLeft;
+            dragOffsetY = e.clientY - activeWindow.offsetTop;
+            focusWindow(activeWindow);
+            document.addEventListener('mousemove', doDrag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function doDrag(e) {
+            if (!isDragging || !activeWindow) return;
+            e.preventDefault(); // Prevent text selection, etc.
+            let newX = e.clientX - dragOffsetX;
+            let newY = e.clientY - dragOffsetY;
+
+            // Constrain to desktop area (approximate)
+            const desktopRect = desktop.getBoundingClientRect();
+            const taskbarRect = document.getElementById('taskbar').getBoundingClientRect();
+            
+            newX = Math.max(0, Math.min(newX, desktopRect.width - activeWindow.offsetWidth));
+            newY = Math.max(0, Math.min(newY, desktopRect.height - activeWindow.offsetHeight - taskbarRect.height));
+
+
+            activeWindow.style.left = `${newX}px`;
+            activeWindow.style.top = `${newY}px`;
+        }
+
+        function stopDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            activeWindow = null;
+            currentAppIdForResizeDrag = null;
+            document.removeEventListener('mousemove', doDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function startResize(e, windowEl, appId) {
+            isResizing = true;
+            activeWindow = windowEl;
+            currentAppIdForResizeDrag = appId;
+            resizeInitialX = e.clientX;
+            resizeInitialY = e.clientY;
+            resizeInitialWidth = activeWindow.offsetWidth;
+            resizeInitialHeight = activeWindow.offsetHeight;
+            focusWindow(activeWindow);
+            document.addEventListener('mousemove', doResize);
+            document.addEventListener('mouseup', stopResize);
+            e.stopPropagation(); // Prevent drag from starting
+        }
+
+        function doResize(e) {
+            if (!isResizing || !activeWindow) return;
+            e.preventDefault();
+            const dx = e.clientX - resizeInitialX;
+            const dy = e.clientY - resizeInitialY;
+            let newWidth = resizeInitialWidth + dx;
+            let newHeight = resizeInitialHeight + dy;
+
+            // Enforce min dimensions
+            const minWidth = parseInt(activeWindow.style.minWidth) || 150;
+            const minHeight = parseInt(activeWindow.style.minHeight) || 100;
+            activeWindow.style.width = `${Math.max(minWidth, newWidth)}px`;
+            activeWindow.style.height = `${Math.max(minHeight, newHeight)}px`;
+
+            // If it's the paint app, resize canvas
+            if (currentAppIdForResizeDrag === 'paintApp' && typeof resizePaintCanvas === 'function') {
+                 resizePaintCanvas();
+            }
+             // If it's the video player, the iframe will resize with CSS
+        }
+
+        function stopResize() {
+            if (!isResizing) return;
+            isResizing = false;
+            // If it's the paint app, ensure canvas content is redrawn if necessary (might need more complex handling for preserving drawing)
+            if (currentAppIdForResizeDrag === 'paintApp' && typeof resizePaintCanvas === 'function') {
+                // resizePaintCanvas(true); // Pass a flag to indicate final resize
+            }
+            activeWindow = null;
+            currentAppIdForResizeDrag = null;
+            document.removeEventListener('mousemove', doResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+
+        function closeWindow(appId) {
+            const winData = openWindows[appId];
+            if (winData && winData.element) {
+                winData.element.style.display = 'none'; // Hide it
+                // Optionally, fully remove from DOM: winData.element.remove(); delete openWindows[appId];
+                if (winData.taskbarItem) {
+                    winData.taskbarItem.remove();
+                }
+                // Clean up app-specific things if necessary
+                if (appId === 'paintApp' && typeof cleanupPaintApp === 'function') {
+                    cleanupPaintApp();
+                }
+                delete openWindows[appId]; // Remove from active windows list
+            }
+        }
+
+        function minimizeWindow(appId) {
+            const winData = openWindows[appId];
+            if (winData && winData.element) {
+                winData.element.style.display = 'none';
+                winData.isMinimized = true;
+                if (winData.taskbarItem) {
+                    winData.taskbarItem.classList.add('minimized');
+                    winData.taskbarItem.classList.remove('active');
+                }
+            }
+        }
+
+        function createTaskbarItem(appId, title) {
+            const item = document.createElement('div');
+            item.className = 'taskbar-item active';
+            item.textContent = title;
+            item.title = title;
+            item.dataset.appId = appId;
+            item.addEventListener('click', () => {
+                const winData = openWindows[appId];
+                if (winData) {
+                    if (winData.isMinimized) {
+                        winData.element.style.display = 'flex';
+                        winData.isMinimized = false;
+                        item.classList.remove('minimized');
+                        focusWindow(winData.element);
+                    } else {
+                        // If window is open and taskbar item is clicked:
+                        // If it's not the currently focused window, focus it.
+                        // If it IS the currently focused window, minimize it.
+                        if (winData.element.style.zIndex == highestZIndex && winData.element.style.display !== 'none') {
+                            minimizeWindow(appId);
+                        } else {
+                            focusWindow(winData.element);
+                        }
+                    }
+                }
+            });
+            taskbarItemsContainer.appendChild(item);
+            openWindows[appId].taskbarItem = item;
+        }
+
+        // --- App Initialization ---
+        function initDesktopIcons() {
+            document.querySelectorAll('.desktop-icon').forEach(icon => {
+                icon.addEventListener('dblclick', () => { // Double click to open
+                    const appId = icon.dataset.appId;
+                    const appTitle = icon.dataset.appTitle;
+                    
+                    // Check if window already exists and is just minimized
+                    if (openWindows[appId] && openWindows[appId].element) {
+                        if (openWindows[appId].isMinimized) {
+                            openWindows[appId].element.style.display = 'flex';
+                            openWindows[appId].isMinimized = false;
+                            if(openWindows[appId].taskbarItem) openWindows[appId].taskbarItem.classList.remove('minimized');
+                            focusWindow(openWindows[appId].element);
+                        } else {
+                            focusWindow(openWindows[appId].element); // Bring to front if already open
+                        }
+                        return;
+                    }
+
+                    // Create new window based on appId
+                    switch (appId) {
+                        case 'paintApp':
+                            createPaintWindow(appId, appTitle);
+                            break;
+                        case 'videoPlayerApp':
+                            createVideoPlayerWindow(appId, appTitle);
+                            break;
+                        case 'calculatorApp':
+                            createCalculatorWindow(appId, appTitle);
+                            break;
+                    }
+                });
+            });
+        }
+
+        // --- Paint App ---
+        let paintCanvas, paintCtx, paintColorPicker, paintBrushSize, paintIsDrawing = false;
+        let paintLastX, paintLastY;
+
+        function createPaintWindow(appId, title) {
+            const content = `
+                <div id="paint-app-content">
+                    <div class="paint-toolbar">
+                        <label for="paintColor">Color:</label>
+                        <input type="color" id="paintColor" value="#000000">
+                        <label for="brushSize">Size:</label>
+                        <input type="range" id="brushSize" min="1" max="50" value="5">
+                        <button id="clearPaintCanvas">Clear</button>
+                    </div>
+                    <canvas id="paintCanvas"></canvas>
+                </div>
+            `;
+            const paintWindow = createWindow(appId, title, content, 500, 400, {
+                onOpen: (windowEl) => {
+                    paintCanvas = windowEl.querySelector('#paintCanvas');
+                    paintCtx = paintCanvas.getContext('2d');
+                    paintColorPicker = windowEl.querySelector('#paintColor');
+                    paintBrushSize = windowEl.querySelector('#brushSize');
+                    const clearButton = windowEl.querySelector('#clearPaintCanvas');
+
+                    // Set initial canvas size
+                    resizePaintCanvas(); // Initial size
+                    
+                    paintCtx.strokeStyle = paintColorPicker.value;
+                    paintCtx.lineWidth = paintBrushSize.value;
+                    paintCtx.lineCap = 'round';
+                    paintCtx.lineJoin = 'round';
+
+                    paintCanvas.addEventListener('mousedown', startPaintDraw);
+                    paintCanvas.addEventListener('mousemove', paintDraw);
+                    paintCanvas.addEventListener('mouseup', stopPaintDraw);
+                    paintCanvas.addEventListener('mouseout', stopPaintDraw); // Stop if mouse leaves canvas
+
+                    // Touch events for basic mobile support
+                    paintCanvas.addEventListener('touchstart', (e) => {
+                        e.preventDefault(); // Prevent page scroll
+                        const touch = e.touches[0];
+                        const mouseEvent = new MouseEvent("mousedown", {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY
+                        });
+                        paintCanvas.dispatchEvent(mouseEvent);
+                    }, { passive: false });
+
+                    paintCanvas.addEventListener('touchmove', (e) => {
+                        e.preventDefault(); // Prevent page scroll
+                        const touch = e.touches[0];
+                        const mouseEvent = new MouseEvent("mousemove", {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY
+                        });
+                        paintCanvas.dispatchEvent(mouseEvent);
+                    }, { passive: false });
+
+                    paintCanvas.addEventListener('touchend', (e) => {
+                         e.preventDefault();
+                        const mouseEvent = new MouseEvent("mouseup", {});
+                        paintCanvas.dispatchEvent(mouseEvent);
+                    });
+
+
+                    paintColorPicker.addEventListener('input', (e) => paintCtx.strokeStyle = e.target.value);
+                    paintBrushSize.addEventListener('input', (e) => paintCtx.lineWidth = e.target.value);
+                    clearButton.addEventListener('click', clearPaint);
+                }
+            });
+        }
+        
+        function resizePaintCanvas() {
+            if (!paintCanvas || !paintCtx) return;
+            // Save current drawing
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = paintCanvas.width;
+            tempCanvas.height = paintCanvas.height;
+            if (paintCanvas.width > 0 && paintCanvas.height > 0) { // Only if canvas had a size
+                 tempCtx.drawImage(paintCanvas, 0, 0);
+            }
+
+            // Resize based on parent .window-content (minus toolbar height)
+            const contentArea = paintCanvas.closest('.window-content');
+            const toolbar = contentArea.querySelector('.paint-toolbar');
+            if (contentArea && toolbar) {
+                const newWidth = contentArea.clientWidth - 2; // -2 for border
+                const newHeight = contentArea.clientHeight - toolbar.offsetHeight - 2; // -2 for border
+                
+                paintCanvas.width = Math.max(10, newWidth); // Ensure minimum size
+                paintCanvas.height = Math.max(10, newHeight);
+
+                // Restore drawing and settings
+                if (tempCanvas.width > 0 && tempCanvas.height > 0) {
+                    paintCtx.drawImage(tempCanvas, 0, 0);
+                }
+                paintCtx.strokeStyle = paintColorPicker.value; // Re-apply settings as context might reset
+                paintCtx.lineWidth = paintBrushSize.value;
+                paintCtx.lineCap = 'round';
+                paintCtx.lineJoin = 'round';
+            }
+        }
+
+
+        function getPaintMousePos(e) {
+            const rect = paintCanvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function startPaintDraw(e) {
+            paintIsDrawing = true;
+            const pos = getPaintMousePos(e);
+            [paintLastX, paintLastY] = [pos.x, pos.y];
+            // paintCtx.beginPath(); // Start a new path for each mousedown
+            // paintCtx.moveTo(paintLastX, paintLastY);
+        }
+
+        function paintDraw(e) {
+            if (!paintIsDrawing) return;
+            const pos = getPaintMousePos(e);
+            paintCtx.beginPath(); // Create a new path segment for smoother lines
+            paintCtx.moveTo(paintLastX, paintLastY);
+            paintCtx.lineTo(pos.x, pos.y);
+            paintCtx.stroke();
+            [paintLastX, paintLastY] = [pos.x, pos.y];
+        }
+
+        function stopPaintDraw() {
+            if (paintIsDrawing) {
+                // paintCtx.closePath(); // Close the current path
+                paintIsDrawing = false;
+            }
+        }
+
+        function clearPaint() {
+            if (paintCtx && paintCanvas) {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+            }
+        }
+        function cleanupPaintApp() {
+            // Dereference canvas and context if needed, or clear intervals
+            paintCanvas = null;
+            paintCtx = null;
+        }
+
+        // --- Video Player App ---
+        function createVideoPlayerWindow(appId, title) {
+            const content = `
+                <div id="video-player-content">
+                    <div style="display: flex; gap: 5px;">
+                        <input type="text" id="youtubeUrl" placeholder="Enter YouTube Video URL">
+                        <button id="playYoutubeVideo">Play</button>
+                    </div>
+                    <div id="youtube-iframe-container">
+                        <span class="video-error-message" style="color: #aaa;">Enter a YouTube URL and click Play.</span>
+                    </div>
+                </div>
+            `;
+            createWindow(appId, title, content, 580, 450, {
+                onOpen: (windowEl) => {
+                    const urlInput = windowEl.querySelector('#youtubeUrl');
+                    const playButton = windowEl.querySelector('#playYoutubeVideo');
+                    const iframeContainer = windowEl.querySelector('#youtube-iframe-container');
+
+                    playButton.addEventListener('click', () => {
+                        const url = urlInput.value.trim();
+                        const videoId = getYouTubeVideoId(url);
+                        iframeContainer.innerHTML = ''; // Clear previous video or message
+                        if (videoId) {
+                            const iframe = document.createElement('iframe');
+                            iframe.width = "560"; // Default, will be overridden by CSS
+                            iframe.height = "315"; // Default
+                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                            iframe.title = "YouTube video player";
+                            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                            iframe.allowFullscreen = true;
+                            iframeContainer.appendChild(iframe);
+                        } else {
+                            const errorMsg = document.createElement('span');
+                            errorMsg.className = 'video-error-message';
+                            errorMsg.textContent = 'Invalid YouTube URL. Please try again.';
+                            iframeContainer.appendChild(errorMsg);
+                        }
+                    });
+                }
+            });
+        }
+
+        function getYouTubeVideoId(url) {
+            if (!url) return null;
+            let videoId = null;
+            const patterns = [
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([^?]+)/,
+                /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([^?]+)/
+            ];
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) {
+                    videoId = match[1];
+                    break;
+                }
+            }
+            // Further check if it's a valid ID (11 chars, alphanumeric, -, _)
+            if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+                return videoId;
+            }
+            return null;
+        }
+
+        // --- Calculator App ---
+        let calcDisplay, calcCurrentInput = '', calcPreviousInput = '', calcOperation = null, calcShouldResetDisplay = false;
+
+        function createCalculatorWindow(appId, title) {
+            const content = `
+                <div id="calculator-content">
+                    <div id="calculator-display">0</div>
+                    <div class="calculator-buttons">
+                        <button data-value="clear" class="clear">C</button>
+                        <button data-value="backspace" class="operator">←</button>
+                        <button data-value="%" class="operator">%</button>
+                        <button data-value="/" class="operator">÷</button>
+
+                        <button data-value="7">7</button>
+                        <button data-value="8">8</button>
+                        <button data-value="9">9</button>
+                        <button data-value="*" class="operator">×</button>
+
+                        <button data-value="4">4</button>
+                        <button data-value="5">5</button>
+                        <button data-value="6">6</button>
+                        <button data-value="-" class="operator">−</button>
+
+                        <button data-value="1">1</button>
+                        <button data-value="2">2</button>
+                        <button data-value="3">3</button>
+                        <button data-value="+" class="operator">+</button>
+
+                        <button data-value="00">00</button>
+                        <button data-value="0">0</button>
+                        <button data-value=".">.</button>
+                        <button data-value="=" class="equals">=</button>
+                    </div>
+                </div>
+            `;
+            const calcWindow = createWindow(appId, title, content, 260, 360, {
+                onOpen: (windowEl) => {
+                    calcDisplay = windowEl.querySelector('#calculator-display');
+                    const buttons = windowEl.querySelectorAll('.calculator-buttons button');
+                    buttons.forEach(button => {
+                        button.addEventListener('click', () => handleCalculatorInput(button.dataset.value));
+                    });
+                    // Add keyboard support specific to this window when it's focused
+                    // This is tricky without a global key listener that checks active window.
+                    // For now, we'll rely on button clicks.
+                    // A more robust solution would involve adding/removing a global key listener
+                    // when the calculator window gains/loses focus.
+                    // Or, make the calculator window itself focusable and listen to keydown on it.
+                    windowEl.setAttribute('tabindex', '-1'); // Make it focusable
+                    windowEl.addEventListener('keydown', handleCalculatorKeyboard);
+
+                    // Initialize calculator state for this instance
+                    // (This part needs to be instance-specific if multiple calculators are allowed)
+                    // For simplicity, current global vars `calcCurrentInput`, etc., will be shared if multiple are open.
+                    // To make it instance-specific, store these vars in openWindows[appId].calculatorState
+                    resetCalculatorState(); 
+                    updateCalculatorDisplay();
+                }
+            });
+             // Focus the window to enable keyboard input immediately
+            if (calcWindow) calcWindow.focus();
+        }
+        
+        function resetCalculatorState() {
+            calcCurrentInput = '0';
+            calcPreviousInput = '';
+            calcOperation = null;
+            calcShouldResetDisplay = false;
+        }
+
+        function handleCalculatorInput(value) {
+            if (value >= '0' && value <= '9' || value === '00') {
+                appendCalcNumber(value);
+            } else if (value === '.') {
+                appendCalcDecimal();
+            } else if (value === 'clear') {
+                clearCalc();
+            } else if (value === 'backspace') {
+                backspaceCalc();
+            } else if (value === '=') {
+                calculateCalc();
+            } else { // Operator
+                chooseCalcOperation(value);
+            }
+            updateCalculatorDisplay();
+             // Keep focus on the window for keyboard input
+            const calcWindowEl = document.getElementById('window-calculatorApp');
+            if (calcWindowEl) calcWindowEl.focus();
+        }
+        
+        function handleCalculatorKeyboard(e) {
+            e.preventDefault(); // Prevent default browser actions for keys like '/'
+            let keyValue = e.key;
+            if (keyValue >= '0' && keyValue <= '9') {
+                handleCalculatorInput(keyValue);
+            } else if (keyValue === '.') {
+                handleCalculatorInput('.');
+            } else if (keyValue === '+') {
+                handleCalculatorInput('+');
+            } else if (keyValue === '-') {
+                handleCalculatorInput('-');
+            } else if (keyValue === '*') {
+                handleCalculatorInput('*');
+            } else if (keyValue === '/') {
+                handleCalculatorInput('/');
+            } else if (keyValue === '%') {
+                handleCalculatorInput('%');
+            } else if (keyValue === 'Enter' || keyValue === '=') {
+                handleCalculatorInput('=');
+            } else if (keyValue === 'Escape' || keyValue.toLowerCase() === 'c') {
+                handleCalculatorInput('clear');
+            } else if (keyValue === 'Backspace') {
+                handleCalculatorInput('backspace');
+            }
+        }
+
+
+        function appendCalcNumber(number) {
+            if (calcCurrentInput === '0' || calcShouldResetDisplay) {
+                calcCurrentInput = '';
+                calcShouldResetDisplay = false;
+            }
+            // Prevent overly long numbers
+            if (calcCurrentInput.length > 15) return;
+            calcCurrentInput += number;
+        }
+
+        function appendCalcDecimal() {
+            if (calcShouldResetDisplay) {
+                calcCurrentInput = '0';
+                calcShouldResetDisplay = false;
+            }
+            if (!calcCurrentInput.includes('.')) {
+                calcCurrentInput += '.';
+            }
+        }
+
+        function clearCalc() {
+            resetCalculatorState();
+        }
+        
+        function backspaceCalc() {
+            if (calcShouldResetDisplay) {
+                clearCalc();
+                return;
+            }
+            calcCurrentInput = calcCurrentInput.slice(0, -1);
+            if (calcCurrentInput === '' || calcCurrentInput === '-') {
+                calcCurrentInput = '0';
+            }
+        }
+
+        function chooseCalcOperation(op) {
+            if (calcCurrentInput === '' && op !== '-') return; // Allow starting with negative
+            if (calcCurrentInput === '' && op === '-') {
+                calcCurrentInput = '-';
+                calcShouldResetDisplay = false;
+                updateCalculatorDisplay();
+                return;
+            }
+            if (calcPreviousInput !== '') { // If there's a pending operation, calculate it first
+                calculateCalc();
+            }
+            calcOperation = op;
+            calcPreviousInput = calcCurrentInput;
+            calcShouldResetDisplay = true;
+        }
+
+        function calculateCalc() {
+            let result;
+            const prev = parseFloat(calcPreviousInput);
+            const current = parseFloat(calcCurrentInput);
+
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch (calcOperation) {
+                case '+': result = prev + current; break;
+                case '-': result = prev - current; break;
+                case '*': result = prev * current; break;
+                case '÷': 
+                    if (current === 0) {
+                        calcCurrentInput = "Error";
+                        calcOperation = null;
+                        calcPreviousInput = '';
+                        calcShouldResetDisplay = true;
+                        return;
+                    }
+                    result = prev / current; 
+                    break;
+                case '%': result = (prev / 100) * current; break; // Or prev % current, depends on interpretation
+                default: return;
+            }
+            // Limit precision to avoid long decimals
+            calcCurrentInput = String(parseFloat(result.toFixed(10)));
+            calcOperation = null;
+            calcPreviousInput = '';
+            calcShouldResetDisplay = true; // Next number input will clear the result
+        }
+
+        function updateCalculatorDisplay() {
+            if (calcDisplay) {
+                // Truncate if too long for display, or use scientific notation
+                let displayValue = calcCurrentInput;
+                if (displayValue.length > 18) { // Max chars for display
+                    displayValue = parseFloat(displayValue).toExponential(9);
+                }
+                calcDisplay.textContent = displayValue;
+            }
+        }
+
+
+        // --- Document Ready ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initDesktopIcons();
+
+            // Global listeners for drag/resize stop, in case mouseup happens outside window
+            document.addEventListener('mouseup', () => {
+                if (isDragging) stopDrag();
+                if (isResizing) stopResize();
+            });
+        });
+
+    </script>
+</body>
+</html>
